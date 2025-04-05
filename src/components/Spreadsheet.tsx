@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Cell } from "../models/cell";
 import { Sheet } from "../models/spreadsheet";
 import { Row } from "../models/row";
 import { RowComponent } from "./Row";
+import { ContextMenu } from "./ContextMenu";
 
 const INITIAL_ROWS = 500;
 const INITIAL_COLS = 50;
@@ -32,10 +33,51 @@ export const Spreadsheet = () => {
     rows: initialRows,
   });
 
-  const addRow = (index: number) => {
+  const contentMenuRef = useRef<HTMLMenuElement>(null);
+  const [contextMenu, setContextMenu] = useState({
+    xPos: 0,
+    yPos: 0,
+    triggered: false,
+  });
+
+  const contextButtons = [
+    {
+      label: "Insert Row",
+      onClick: () => addRow(),
+    },
+    {
+      label: "Insert Column",
+      onClick: () => addColumn(),
+    },
+    {
+      label: "Delete Row",
+      onClick: () => removeRow(),
+    },
+    {
+      label: "Delete Column",
+      onClick: () => removeColumn(),
+    },
+  ];
+
+  function handleContext(e: MouseEvent) {
+    e.preventDefault();
+    // console.log(contentMenuRef.current?.getBoundingClientRect());
+
+    let x = e.clientX;
+    let y = e.clientY;
+
+    setContextMenu({
+      xPos: x,
+      yPos: y,
+      triggered: true,
+    });
+  }
+
+  const addRow = () => {
+    const index = Number(sheet.activeCell.split("R")[1].split("C")[0]);
     const currentRows = sheet.rows;
     const current_col_length = currentRows[0].length;
-    let i = currentRows.length;
+    let i = index;
     const row: Cell[] = [];
     for (let j = 1; j <= current_col_length; j++) {
       const cell = {
@@ -44,17 +86,17 @@ export const Spreadsheet = () => {
         value: "",
         formula: "",
       };
-      row.splice(index, 1, cell);
-      i++;
+      row.push(cell);
     }
-    currentRows.push(row);
+    currentRows.splice(index, 0, row);
     setSheet({ ...sheet, rows: currentRows });
   };
 
-  const addColumn = (index: number) => {
+  const addColumn = () => {
+    const index = Number(sheet.activeCell.split("C")[1]);
     const currentRows = sheet.rows;
-    let i = 1;
-    const j = currentRows[0].length + 1;
+    let i = 0;
+    const j = index;
     const rows: Row[] = [];
     currentRows.forEach((row: Cell[]) => {
       const cell = {
@@ -63,20 +105,23 @@ export const Spreadsheet = () => {
         value: "",
         formula: "",
       };
-      row.splice(index, 1, cell);
+      row.splice(index, 0, cell);
       rows.push(row);
       i++;
     });
+    console.log(rows);
     setSheet({ ...sheet, rows: rows });
   };
 
-  const removeRow = (index: number) => {
+  const removeRow = () => {
+    const index = Number(sheet.activeCell.split("R")[1].split("C")[0]);
     const currentRows = sheet.rows;
     currentRows.splice(index, 1);
     setSheet({ ...sheet, rows: currentRows });
   };
 
-  const removeColumn = (index: number) => {
+  const removeColumn = () => {
+    const index = Number(sheet.activeCell.split("C")[1]);
     const currentRows = sheet.rows;
     const rows: Row[] = [];
     currentRows.forEach((row: Cell[]) => {
@@ -107,8 +152,17 @@ export const Spreadsheet = () => {
     []
   );
 
+  const changeActive = useCallback((rowIndex: number, colIndex: number) => {
+    setSheet((prevSheet) => {
+      return {
+        ...prevSheet,
+        activeCell: `R${rowIndex}C${colIndex}`,
+      };
+    });
+  }, []);
+
   return (
-    <div>
+    <div onContextMenu={(e) => handleContext(e)}>
       <table className="min-w-full border-collapse">
         <thead>
           <tr>
@@ -128,10 +182,18 @@ export const Spreadsheet = () => {
               row={row}
               rowIndex={rowIndex}
               handleCellChange={handleCellChange}
+              changeActive={changeActive}
             />
           ))}
         </tbody>
       </table>
+      <ContextMenu
+        triggered={contextMenu.triggered}
+        xPos={contextMenu.xPos}
+        yPos={contextMenu.yPos}
+        contentMenuRef={contentMenuRef}
+        buttons={contextButtons}
+      ></ContextMenu>
     </div>
   );
 };

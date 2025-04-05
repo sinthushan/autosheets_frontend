@@ -10,10 +10,11 @@ type RowProps = {
     colIndex: number,
     value: string | number
   ) => void;
+  changeActive: (rowIndex: number, colIndex: number) => void;
 };
 
 export const RowComponent: React.FC<RowProps> = React.memo(
-  ({ row, rowIndex, handleCellChange }) => {
+  ({ row, rowIndex, handleCellChange, changeActive }) => {
     return (
       <tr>
         <th>{rowIndex + 1}</th>
@@ -25,6 +26,7 @@ export const RowComponent: React.FC<RowProps> = React.memo(
                 onChange={(value) =>
                   handleCellChange(rowIndex, colIndex, value)
                 }
+                changeActive={() => changeActive(rowIndex, colIndex)}
               />
             </td>
           );
