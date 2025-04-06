@@ -11,7 +11,7 @@ const INITIAL_COLS = 50;
 const initialRows = Array.from({ length: INITIAL_ROWS }, (_, rowIndex) =>
   Array.from({ length: INITIAL_COLS }, (_, colIndex) => ({
     isActive: false,
-    coordinate: `${rowIndex}-${colIndex}`,
+    coordinate: `R${rowIndex}C${colIndex}`,
     value: "",
     formula: "",
   }))
@@ -77,7 +77,7 @@ export const Spreadsheet = () => {
     const index = Number(sheet.activeCell.split("R")[1].split("C")[0]);
     const currentRows = sheet.rows;
     const current_col_length = currentRows[0].length;
-    let i = index;
+    const i = index;
     const row: Cell[] = [];
     for (let j = 1; j <= current_col_length; j++) {
       const cell = {
@@ -93,24 +93,29 @@ export const Spreadsheet = () => {
   };
 
   const addColumn = () => {
-    const index = Number(sheet.activeCell.split("C")[1]);
+    const index = Number(
+      sheet.activeCell.split("C")[1] || sheet.rows[0].length
+    ); // fallback to end
     const currentRows = sheet.rows;
-    let i = 0;
-    const j = index;
-    const rows: Row[] = [];
-    currentRows.forEach((row: Cell[]) => {
-      const cell = {
+
+    const newRows: Row[] = currentRows.map((row, i) => {
+      const newCell: Cell = {
         isActive: false,
-        coordinate: `R${i}C${j}`,
+        coordinate: `R${i}C${index}`,
         value: "",
         formula: "",
       };
-      row.splice(index, 0, cell);
-      rows.push(row);
-      i++;
+
+      // Create a new array with the cell inserted at the right index
+      const newRow = [...row.slice(0, index), newCell, ...row.slice(index)];
+
+      return newRow;
     });
-    console.log(rows);
-    setSheet({ ...sheet, rows: rows });
+
+    setSheet((prev) => ({
+      ...prev,
+      rows: newRows,
+    }));
   };
 
   const removeRow = () => {
@@ -122,13 +127,21 @@ export const Spreadsheet = () => {
 
   const removeColumn = () => {
     const index = Number(sheet.activeCell.split("C")[1]);
-    const currentRows = sheet.rows;
-    const rows: Row[] = [];
-    currentRows.forEach((row: Cell[]) => {
-      row.splice(index, 1);
-      rows.push(row);
+
+    const newRows: Row[] = sheet.rows.map((row, i) => {
+      // Only remove if index is within bounds
+      if (index >= 0 && index < row.length) {
+        // Create a new row without the cell at the specified index
+        const newRow = [...row.slice(0, index), ...row.slice(index + 1)];
+        return newRow;
+      }
+      return row; // return as-is if invalid index
     });
-    setSheet({ ...sheet, rows: rows });
+
+    setSheet((prevSheet) => ({
+      ...prevSheet,
+      rows: newRows,
+    }));
   };
 
   const handleCellChange = useCallback(
